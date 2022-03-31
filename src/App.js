@@ -5,7 +5,8 @@ import Shop from "./component/shop/shop.component.jsx";
 import { Header } from "./component/header/header.component.jsx";
 import SignPage from "./component/sign-in-and-sign-on/sign-in-and-sign-on.component";
 import React from "react";
-import { auth } from "./firebase/firebase.utils";
+import { auth, createUserProfileDocument } from "./firebase/firebase.utils";
+import { onSnapshot } from "firebase/firestore";
 
 class App extends React.Component {
   constructor() {
@@ -15,17 +16,58 @@ class App extends React.Component {
     };
   }
 
-  unsubscribe = null;
-  componentDidMount = () => {
-    this.unsubscribe = auth.onAuthStateChanged((user) => {
-      this.setState({ userName: user });
-      console.log(user);
-    });
-  };
+  // unsubscribe = null;
+  // componentDidMount = () => {
+  //   this.unsubscribe = auth.onAuthStateChanged(async (user) => {
+  //     if (user) {
+  //       const userRef = await createUserProfile(user);
+  //       onSnapshot(userRef, (snapshot) => {
+  //         console.log(snapshot);
+  //         // this.setState({
+  //         // })
+  //       });
+  //     }
+  //   });
+  // };
 
-  componentWillUnmount = () => {
-    this.unsubscribe();
-  };
+  // componentWillUnmount = () => {
+  //   this.unsubscribe();
+  // };
+
+  unsubscribeFromAuth = null;
+
+  componentDidMount() {
+    this.unsubscribeFromAuth = auth.onAuthStateChanged(async (userAuth) => {
+      if (userAuth) {
+        const userRef = await createUserProfileDocument(userAuth);
+
+        // Now calls `onSnapshot` as a function; DocumentReference passed as first argument
+        // and callback function is now the second argument
+        onSnapshot(userRef, (snapshot) => {
+          this.setState(
+            {
+              userName: {
+                id: snapshot.id,
+                ...snapshot.data(),
+              },
+            },
+            () => {
+              console.log(this.state.userName);
+            }
+          );
+        });
+      } else {
+        // user is not signed in, so userAuth will be null
+        this.setState({ userName: userAuth }, () => {
+          console.log(this.state.userName);
+        });
+      }
+    });
+  }
+
+  componentWillUnmount() {
+    this.unsubscribeFromAuth();
+  }
 
   render() {
     return (
